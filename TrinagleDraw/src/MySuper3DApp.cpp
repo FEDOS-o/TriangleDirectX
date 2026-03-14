@@ -1,6 +1,3 @@
-// MySuper3DApp.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
 #include <windows.h>
 #include <WinUser.h>
 #include <wrl.h>
@@ -19,96 +16,95 @@
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "dxguid.lib")
 
-LRESULT CALLBACK WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM lparam)
-{
-	switch (umessage)
-	{
-	case WM_KEYDOWN:
-	{
-		// If a key is pressed send it to the input object so it can record that state.
-		std::cout << "Key: " << static_cast<unsigned int>(wparam) << std::endl;
-
-		if (static_cast<unsigned int>(wparam) == 27) PostQuitMessage(0);
-		return 0;
-	}
-	default:
-	{
-		return DefWindowProc(hwnd, umessage, wparam, lparam);
-	}
-	}
-}
-
 
 class DisplayWin32 {
 private:
-	LONG clientHeight, clientWidth;
-	HINSTANCE hInstance;
-	HWND hWnd;
-	WNDCLASSEX wc;
+	LONG ClientHeight, ClientWidth;
 
+	WNDCLASSEX Wc;
 
 public:
-	DisplayWin32(LONG clientWidth, LONG clientHeight, HINSTANCE hInstance, LPCWSTR applicationName) :
-		clientHeight(clientHeight),
-		clientWidth(clientWidth),
-		hInstance(hInstance) {
-		wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-		wc.lpfnWndProc = WndProc;
-		wc.cbClsExtra = 0;
-		wc.cbWndExtra = 0;
-		wc.hInstance = hInstance;
-		wc.hIcon = LoadIcon(nullptr, IDI_WINLOGO);
-		wc.hIconSm = wc.hIcon;
-		wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
-		wc.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
-		wc.lpszMenuName = nullptr;
-		wc.lpszClassName = applicationName;
-		wc.cbSize = sizeof(WNDCLASSEX);
+	HWND Window;
+
+public:
+	DisplayWin32(LONG clientWidth, LONG clientHeight, HINSTANCE instance, LPCWSTR applicationName) :
+		ClientHeight(clientHeight),
+		ClientWidth(clientWidth) {
+		Wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+		Wc.lpfnWndProc = WndProc;
+		Wc.cbClsExtra = 0;
+		Wc.cbWndExtra = 0;
+		Wc.hInstance = instance;
+		Wc.hIcon = LoadIcon(nullptr, IDI_WINLOGO);
+		Wc.hIconSm = Wc.hIcon;
+		Wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+		Wc.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
+		Wc.lpszMenuName = nullptr;
+		Wc.lpszClassName = applicationName;
+		Wc.cbSize = sizeof(WNDCLASSEX);
 
 		// Register the window class.
-		RegisterClassEx(&wc);
+		RegisterClassEx(&Wc);
 
 
-		auto screenWidth = 800;
-		auto screenHeight = 800;
-
-		RECT windowRect = { 0, 0, static_cast<LONG>(screenWidth), static_cast<LONG>(screenHeight) };
+		RECT windowRect = { 0, 0, static_cast<LONG>(ClientWidth), static_cast<LONG>(ClientHeight) };
 		AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
 
 		auto dwStyle = WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX | WS_THICKFRAME;
 
-		auto posX = (GetSystemMetrics(SM_CXSCREEN) - screenWidth) / 2;
-		auto posY = (GetSystemMetrics(SM_CYSCREEN) - screenHeight) / 2;
+		auto posX = (GetSystemMetrics(SM_CXSCREEN) - ClientWidth) / 2;
+		auto posY = (GetSystemMetrics(SM_CYSCREEN) - ClientHeight) / 2;
 
-		hWnd = CreateWindowEx(WS_EX_APPWINDOW, applicationName, applicationName,
+		Window = CreateWindowEx(
+			WS_EX_APPWINDOW,
+			applicationName,
+			applicationName,
 			dwStyle,
 			posX, posY,
 			windowRect.right - windowRect.left,
 			windowRect.bottom - windowRect.top,
-			nullptr, nullptr, hInstance, nullptr);
+			nullptr,
+			nullptr,
+			instance,
+			nullptr);
 
-		ShowWindow(hWnd, SW_SHOW);
-		SetForegroundWindow(hWnd);
-		SetFocus(hWnd);
+		ShowWindow(Window, SW_SHOW);
+		SetForegroundWindow(Window);
+		SetFocus(Window);
 
 		ShowCursor(true);
 	}
 
-
-	HWND getHWnd() {
-		return hWnd;
-	}
-
 	void createMessageBox(LPCWSTR text, LPCWSTR caption, UINT type) {
-		MessageBox(hWnd, text, caption, type);
+		MessageBox(Window, text, caption, type);
 	}
 
 	void setWindowText(LPCWSTR text) {
-		SetWindowText(hWnd, text);
+		SetWindowText(Window, text);
+	}
+
+private:
+	static LRESULT CALLBACK WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM lparam)
+	{
+		switch (umessage)
+		{
+		case WM_KEYDOWN:
+		{
+			// If a key is pressed send it to the input object so it can record that state.
+			std::cout << "Key: " << static_cast<unsigned int>(wparam) << std::endl;
+			return 0;
+		}
+		default:
+		{
+			return DefWindowProc(hwnd, umessage, wparam, lparam);
+		}
+		}
 	}
 };
 
+
 class Game;
+
 
 class GameComponent {
 protected:
@@ -116,7 +112,7 @@ protected:
 public:
 	GameComponent(Game* game) : game(game) {}
 
-	virtual void Initialize() {}; 
+	virtual void Initialize() {};
 	virtual void Update(float deltaTime) {};
 	virtual void Draw() {};
 	virtual void DestroyResources() {};
@@ -126,17 +122,38 @@ public:
 
 class Game {
 
+private:
+	HINSTANCE Instance;
+	LPCWSTR Name;
+
+	IDXGISwapChain* SwapChain;
+	ID3D11Texture2D* BackBuffer;
+	ID3D11UnorderedAccessView* RenderSRV;
+	ID3D11Debug* DebugAnnotation;
+	ID3D11RasterizerState* RasterizerState;
+
+	std::chrono::time_point<std::chrono::steady_clock> PrevTime;
+	std::chrono::time_point<std::chrono::steady_clock> StartTime;
+	float TotalTime;
+
+	bool ScreenResized;
+
 public:
-	Microsoft::WRL::ComPtr<ID3D11Device> device;
-	ID3D11DeviceContext* context;
-	IDXGISwapChain* swapChain;
-	DisplayWin32 display;
+
+	ID3D11RenderTargetView* RenderView;
+	Microsoft::WRL::ComPtr<ID3D11Device> Device;
+	ID3D11DeviceContext* Context;
+	DisplayWin32 Display;
 	std::vector<GameComponent*> components;
 
 public:
 
-	Game(LPCWSTR applicationName, HINSTANCE hInstance, LONG screenWidth, LONG screenHeight)
-		: display(screenWidth, screenHeight, hInstance, applicationName) {
+	Game(LPCWSTR applicationName, HINSTANCE hInstance, LONG screenWidth, LONG screenHeight) :
+		Display(screenWidth, screenHeight, hInstance, applicationName),
+		Instance(hInstance),
+		Name(applicationName),
+		TotalTime(0.0f),
+		ScreenResized(false) {
 
 		D3D_FEATURE_LEVEL featureLevel[] = { D3D_FEATURE_LEVEL_11_1 };
 
@@ -150,7 +167,7 @@ public:
 		swapDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 		swapDesc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 		swapDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapDesc.OutputWindow = display.getHWnd();
+		swapDesc.OutputWindow = Display.Window;
 		swapDesc.Windowed = true;
 		swapDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 		swapDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
@@ -166,26 +183,245 @@ public:
 			1,
 			D3D11_SDK_VERSION,
 			&swapDesc,
-			&swapChain,
-			&device,
+			&SwapChain,
+			&Device,
 			nullptr,
-			&context);
+			&Context);
 
 		if (FAILED(res))
 		{
 			// Well, that was unexpected
 		}
 
+		Device->QueryInterface(__uuidof(ID3D11Debug), (void**)&DebugAnnotation);
+
+		PrevTime = std::chrono::steady_clock::now();
+		StartTime = PrevTime;
 	}
 
 
+	~Game() {
+		DestroyResources();
+	}
 
+
+	HRESULT CreateBackBuffer() {
+		if (RenderView) {
+			RenderView->Release();
+			RenderView = nullptr;
+		}
+		if (BackBuffer) {
+			BackBuffer->Release();
+			BackBuffer = nullptr;
+		}
+
+		auto res = SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&BackBuffer);	// __uuidof(ID3D11Texture2D)
+		if (FAILED(res)) {
+			Display.createMessageBox(L"Failed to get back buffer", L"Error", MB_OK);
+			return res;
+		}
+
+		res = Device->CreateRenderTargetView(BackBuffer, nullptr, &RenderView);
+		if (FAILED(res)) {
+			Display.createMessageBox(L"Failed to create render target view", L"Error", MB_OK);
+			return res;
+		}
+		return S_OK;
+	}
+
+
+	HRESULT Initialize() {
+		auto res = CreateBackBuffer();
+		if (FAILED(res)) {
+			return res;
+		}
+
+		CD3D11_RASTERIZER_DESC rastDesc = {};
+		rastDesc.CullMode = D3D11_CULL_NONE;     
+		rastDesc.FillMode = D3D11_FILL_SOLID;     
+
+		res = Device->CreateRasterizerState(&rastDesc, &RasterizerState);
+		if (FAILED(res)) {
+			Display.createMessageBox(L"Failed to create rasterizer state", L"Error", MB_OK);
+			return res;
+		}
+
+
+		for (auto* component : components) {
+			component->Initialize();
+		}
+
+		return S_OK;
+	}
+
+
+	void Update() {
+		auto currentTime = std::chrono::steady_clock::now();
+		float deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - PrevTime).count() / 1000000.0f;
+
+		PrevTime = currentTime;
+
+		TotalTime += deltaTime;
+
+		for (auto* component : components) {
+			component->Update(deltaTime);
+		}
+
+		UpdateInternal(deltaTime);
+	}
+
+
+	void UpdateInternal(float deltaTime) {
+
+	}
+
+
+	void PrepareFrame() {
+		Context->ClearState();
+
+		if (ScreenResized) {
+			RestoreTargets();
+			ScreenResized = false;
+		}
+
+		if (RasterizerState) {
+			Context->RSSetState(RasterizerState);
+		}
+
+		D3D11_VIEWPORT viewport{};
+		viewport.Width = 800.0f;
+		viewport.Height = 800.0f;
+		viewport.TopLeftX = 0;
+		viewport.TopLeftY = 0;
+		viewport.MinDepth = 0;
+		viewport.MaxDepth = 1.0f;
+
+		Context->RSSetViewports(1, &viewport);
+	}
+
+
+	void PrepareResources() {
+
+	}
+
+
+	void RestoreTargets() {
+		if (RenderView) {
+			RenderView->Release();
+			RenderView = nullptr;
+		}
+		if (BackBuffer) {
+			BackBuffer->Release();
+			BackBuffer = nullptr;
+		}
+
+		CreateBackBuffer();
+	}
+
+
+	void Draw() {
+		float clearColor[] = { 0.1f, 0.1f, 0.1f, 1.0f };
+		Context->ClearRenderTargetView(RenderView, clearColor);
+
+		Context->OMSetRenderTargets(1, &RenderView, nullptr);
+
+		for (auto* component : components) {
+			component->Draw();
+		}
+
+		Context->OMSetRenderTargets(0, nullptr, nullptr);
+	}
+
+
+	void EndFrame() {
+		SwapChain->Present(1, 0);
+	}
+
+
+	void MessageHandler(MSG& msg) {
+		switch (msg.message) {
+		case WM_KEYDOWN:
+			if (msg.wParam == VK_ESCAPE) {
+				Exit();
+			}
+			break;
+		case WM_SIZE:
+			ScreenResized = true;
+			break;
+		}
+	}
+
+
+	void Exit() {
+		PostQuitMessage(0);
+	}
+
+
+	void DestroyResources() {
+		for (auto* component : components) {
+			component->DestroyResources();
+		}
+		if (RasterizerState) {
+			RasterizerState->Release();
+			RasterizerState = nullptr;
+		}
+		if (RenderView) {
+			RenderView->Release();
+			RenderView = nullptr;
+		}
+		if (BackBuffer) {
+			BackBuffer->Release();
+			BackBuffer = nullptr;
+		}
+		if (RenderSRV) {
+			RenderSRV->Release();
+			RenderSRV = nullptr;
+		}
+		if (DebugAnnotation) {
+			DebugAnnotation->Release();
+			DebugAnnotation = nullptr;
+		}
+		if (Context) {
+			Context->Release();
+			Context = nullptr;
+		}
+		if (SwapChain) {
+			SwapChain->Release();
+			SwapChain = nullptr;
+		}
+	}
+
+
+	void Run() {
+		MSG msg = {};
+
+		while (true) {
+			while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+
+				MessageHandler(msg);
+			}
+
+			if (msg.message == WM_QUIT) {
+				break;
+			}
+
+			Update();
+
+			PrepareFrame();
+			PrepareResources();
+
+			Draw();
+
+			EndFrame();
+		}
+	}
 };
 
-class TriangleGameComponent : GameComponent {
+
+class TriangleGameComponent : public GameComponent {
 public:
-	ID3D11Texture2D* backTex;
-	ID3D11RenderTargetView* rtv;
 	ID3DBlob* vertexBC = nullptr;
 	ID3DBlob* errorVertexCode = nullptr;
 	ID3DBlob* pixelBC;
@@ -198,27 +434,17 @@ public:
 	UINT* strides;
 	UINT* offsets;
 
+
 	~TriangleGameComponent() {
 		DestroyResources();
 	}
+
 
 	TriangleGameComponent(Game* game) : GameComponent{ game } {}
 
 
 	void Initialize() override {
-		auto res = game->swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backTex);	// __uuidof(ID3D11Texture2D)
-		if (FAILED(res)) {
-			game->display.createMessageBox(L"Failed to get back buffer", L"Error", MB_OK);
-			return;
-		}
-		res = game->device->CreateRenderTargetView(backTex, nullptr, &rtv);
-		if (FAILED(res)) {
-			game->display.createMessageBox(L"Failed to create render target view", L"Error", MB_OK);
-			return;
-		}
-
-
-		res = D3DCompileFromFile(L"./Shaders/MyVeryFirstShader.hlsl",
+		auto res = D3DCompileFromFile(L"./Shaders/MyVeryFirstShader.hlsl",
 			nullptr /*macros*/,
 			nullptr /*include*/,
 			"VSMain",
@@ -243,7 +469,7 @@ public:
 					printf("%d", (res & mask ? 1 : 0));
 					mask >>= 1;
 				}
-				game->display.createMessageBox(L"MyVeryFirstShader.hlsl", L"Missing Shader File", MB_OK);
+				game->Display.createMessageBox(L"MyVeryFirstShader.hlsl", L"Missing Shader File", MB_OK);
 				//MessageBox(hWnd, L"MyVeryFirstShader.hlsl", L"Missing Shader File", MB_OK);
 			}
 
@@ -252,15 +478,23 @@ public:
 
 		D3D_SHADER_MACRO Shader_Macros[] = { "TEST", "1", "TCOLOR", "float4(0.0f, 1.0f, 0.0f, 1.0f)", nullptr, nullptr };
 
-		res = D3DCompileFromFile(L"./Shaders/MyVeryFirstShader.hlsl", Shader_Macros /*macros*/, nullptr /*include*/, "PSMain", "ps_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &pixelBC, &errorPixelCode);
+		res = D3DCompileFromFile(L"./Shaders/MyVeryFirstShader.hlsl",
+			Shader_Macros /*macros*/,
+			nullptr /*include*/,
+			"PSMain",
+			"ps_5_0",
+			D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+			0,
+			&pixelBC,
+			&errorPixelCode);
 
 
-		game->device->CreateVertexShader(
+		game->Device->CreateVertexShader(
 			vertexBC->GetBufferPointer(),
 			vertexBC->GetBufferSize(),
 			nullptr, &vertexShader);
 
-		game->device->CreatePixelShader(
+		game->Device->CreatePixelShader(
 			pixelBC->GetBufferPointer(),
 			pixelBC->GetBufferSize(),
 			nullptr, &pixelShader);
@@ -284,7 +518,7 @@ public:
 			0}
 		};
 
-		game->device->CreateInputLayout(
+		game->Device->CreateInputLayout(
 			inputElements,
 			2,
 			vertexBC->GetBufferPointer(),
@@ -312,7 +546,7 @@ public:
 		vertexData.SysMemPitch = 0;
 		vertexData.SysMemSlicePitch = 0;
 
-		game->device->CreateBuffer(&vertexBufDesc, &vertexData, &vb);
+		game->Device->CreateBuffer(&vertexBufDesc, &vertexData, &vb);
 
 
 		int indeces[] = { 0,1,2, 1,0,3 };
@@ -329,177 +563,125 @@ public:
 		indexData.SysMemPitch = 0;
 		indexData.SysMemSlicePitch = 0;
 
-		game->device->CreateBuffer(&indexBufDesc, &indexData, &ib);
+		game->Device->CreateBuffer(&indexBufDesc, &indexData, &ib);
 
 		strides = new UINT[1]{ 32 };
 		offsets = new UINT[1]{ 0 };
 	}
 
+
 	void Update(float deltaTime) override {
-		
+
 	}
 
 
 	void Draw() {
-		if (!game || !game->context) {
+		if (!game || !game->Context) {
 			return;
 		}
 
 
-		game->context->IASetInputLayout(layout);
-		game->context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		game->context->IASetIndexBuffer(ib, DXGI_FORMAT_R32_UINT, 0);
-		game->context->IASetVertexBuffers(0, 1, &vb, strides, offsets);
-		game->context->VSSetShader(vertexShader, nullptr, 0);
-		game->context->PSSetShader(pixelShader, nullptr, 0);
+		game->Context->IASetInputLayout(layout);
+		game->Context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		game->Context->IASetIndexBuffer(ib, DXGI_FORMAT_R32_UINT, 0);
+		game->Context->IASetVertexBuffers(0, 1, &vb, strides, offsets);
+		game->Context->VSSetShader(vertexShader, nullptr, 0);
+		game->Context->PSSetShader(pixelShader, nullptr, 0);
+
+		game->Context->DrawIndexed(6, 0, 0);
 	}
 
 
 	void DestroyResources() override {
-		if (rtv) { 
-			rtv->Release(); 
-			rtv = nullptr; 
-		}
-		if (backTex) { 
-			backTex->Release(); 
-			backTex = nullptr; 
-		}
-		if (layout) { 
+		if (layout) {
 			layout->Release();
 			layout = nullptr;
 		}
-		if (vb) { 
+		if (vb) {
 			vb->Release();
 			vb = nullptr;
 		}
-		if (ib) { 
+		if (ib) {
 			ib->Release();
 			ib = nullptr;
 		}
-		if (vertexShader) { 
+		if (vertexShader) {
 			vertexShader->Release();
 			vertexShader = nullptr;
 		}
-		if (pixelShader) { 
+		if (pixelShader) {
 			pixelShader->Release();
 			pixelShader = nullptr;
 		}
-		if (vertexBC) { 
+		if (vertexBC) {
 			vertexBC->Release();
 			vertexBC = nullptr;
 		}
-		if (pixelBC) { 
+		if (pixelBC) {
 			pixelBC->Release();
 			pixelBC = nullptr;
 		}
-		if (errorVertexCode) { 
+		if (errorVertexCode) {
 			errorVertexCode->Release();
 			errorVertexCode = nullptr;
 		}
-		if (errorPixelCode) { 
+		if (errorPixelCode) {
 			errorPixelCode->Release();
 			errorPixelCode = nullptr;
 		}
-		if (strides) { 
+		if (strides) {
 			delete[] strides;
 			strides = nullptr;
 		}
-		if (offsets) { 
+		if (offsets) {
 			delete[] offsets;
 			offsets = nullptr;
 		}
 	}
-
 };
 
 
+class BackgroundGameComponent : public GameComponent {
+private:
+	float TotalTime;
 
+public:
+	BackgroundGameComponent(Game* game) : GameComponent(game), TotalTime(0.0f) {}
 
+	void Update(float deltaTime) override {
+		TotalTime += deltaTime;
+		while (TotalTime > 1.0f) {
+			TotalTime -= 1.0f;
+		}
+	}
+
+	void Draw() override {
+		if (!game || !game->Context || !game->RenderView) {
+			return;
+		}
+
+		float clearColor[] = { TotalTime, 0.1f, 0.1f, 1.0f };
+		game->Context->ClearRenderTargetView(game->RenderView, clearColor);
+	}
+};
 
 
 int main()
 {
 	Game game(L"My3dApp", GetModuleHandle(nullptr), 800, 800);
 
-	TriangleGameComponent comp(&game);
-	comp.Initialize();
+
+	BackgroundGameComponent backComp(&game);
+	game.components.push_back(&backComp);
+
+	TriangleGameComponent rectComp(&game);
+	game.components.push_back(&rectComp);
 
 
-	CD3D11_RASTERIZER_DESC rastDesc = {};
-	rastDesc.CullMode = D3D11_CULL_NONE;
-	rastDesc.FillMode = D3D11_FILL_SOLID;
+	game.Initialize();
 
-	ID3D11RasterizerState* rastState;
-	auto res = game.device->CreateRasterizerState(&rastDesc, &rastState);
+	game.Run();
 
-	game.context->RSSetState(rastState);
-
-	std::chrono::time_point<std::chrono::steady_clock> PrevTime = std::chrono::steady_clock::now();
-	float totalTime = 0;
-	unsigned int frameCount = 0;
-
-	MSG msg = {};
-	bool isExitRequested = false;
-	while (!isExitRequested) {
-		// Handle the windows messages.
-		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-
-		// If windows signals to end the application then exit out.
-		if (msg.message == WM_QUIT) {
-			isExitRequested = true;
-		}
-
-		game.context->ClearState();
-
-		game.context->RSSetState(rastState);
-
-		D3D11_VIEWPORT viewport = {};
-		viewport.Width = static_cast<float>(800);
-		viewport.Height = static_cast<float>(800);
-		viewport.TopLeftX = 0;
-		viewport.TopLeftY = 0;
-		viewport.MinDepth = 0;
-		viewport.MaxDepth = 1.0f;
-
-		game.context->RSSetViewports(1, &viewport);
-
-		comp.Draw();
-
-		auto	curTime = std::chrono::steady_clock::now();
-		float	deltaTime = std::chrono::duration_cast<std::chrono::microseconds>(curTime - PrevTime).count() / 1000000.0f;
-		PrevTime = curTime;
-
-		totalTime += deltaTime;
-		frameCount++;
-
-		if (totalTime > 1.0f) {
-			float fps = frameCount / totalTime;
-
-			totalTime -= 1.0f;
-
-			WCHAR text[256];
-			swprintf_s(text, TEXT("FPS: %f"), fps);
-			game.display.setWindowText(text);
-			//SetWindowText(hWnd, text);
-
-			frameCount = 0;
-		}
-
-		game.context->OMSetRenderTargets(1, &comp.rtv, nullptr);
-
-		float color[] = { totalTime, 0.1f, 0.1f, 1.0f };
-		game.context->ClearRenderTargetView(comp.rtv, color);
-
-		game.context->DrawIndexed(6, 0, 0);
-
-		game.context->OMSetRenderTargets(0, nullptr, nullptr);
-
-		game.swapChain->Present(1, /*DXGI_PRESENT_DO_NOT_WAIT*/ 0);
-	}
-
-	std::cout << "Hello World!\n";
+	std::cout << "Hello world!\n";
 }
 
