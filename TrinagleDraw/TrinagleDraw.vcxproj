@@ -23,7 +23,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Game.h" />
-    <ClInclude Include="src\Keys.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
