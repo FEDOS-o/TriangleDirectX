@@ -22,7 +22,12 @@
     <ClCompile Include="src\MySuper3DApp.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\BackgroundGameComponent.h" />
+    <ClInclude Include="src\DisplayWin32.h" />
     <ClInclude Include="src\Game.h" />
+    <ClInclude Include="src\GameComponent.h" />
+    <ClInclude Include="src\RotatingTriangleGameComponent.h" />
+    <ClInclude Include="src\TriangleGameComponent.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
